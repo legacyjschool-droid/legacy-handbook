@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Legacy Admin</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--blue:#2B4EA8;--yellow:#F5C418;--green:#16a34a;--red:#dc2626;--bg:#f1f5f9;--card:#fff;--border:#e2e8f0;--text:#1e293b;--text2:#64748b}
+body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+/* LOGIN */
+#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+.login-card{background:var(--card);border-radius:16px;padding:40px;width:100%;max-width:400px;box-shadow:0 4px 24px rgba(0,0,0,.1)}
+.login-logo{display:flex;align-items:center;gap:10px;margin-bottom:32px;justify-content:center}
+.login-logo img{height:36px}
+.login-title{font-size:20px;font-weight:700;color:var(--text);margin-bottom:6px;text-align:center}
+.login-sub{font-size:13px;color:var(--text2);text-align:center;margin-bottom:28px}
+.form-group{margin-bottom:16px}
+.form-label{font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px;display:block;letter-spacing:.04em;text-transform:uppercase}
+.form-input{width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;outline:none;transition:border-color .15s}
+.form-input:focus{border-color:var(--blue)}
+.btn-login{width:100%;padding:12px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:opacity .15s}
+.btn-login:hover{opacity:.9}
+.login-error{background:#fef2f2;border:1px solid #fecaca;color:var(--red);padding:10px 14px;border-radius:8px;font-size:13px;margin-top:12px;display:none}
+
+/* MAIN LAYOUT */
+#main-screen{display:none;min-height:100vh;flex-direction:column}
+.topbar{background:var(--blue);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.topbar-left{display:flex;align-items:center;gap:12px}
+.topbar img{height:28px}
+.topbar-title{font-size:13px;color:rgba(255,255,255,.7);font-weight:500}
+.topbar-right{display:flex;align-items:center;gap:12px}
+.user-badge{font-size:12px;color:rgba(255,255,255,.7)}
+.btn-logout{background:rgba(255,255,255,.15);color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer;font-family:inherit}
+.btn-logout:hover{background:rgba(255,255,255,.25)}
+
+.layout{display:flex;flex:1;overflow:hidden}
+
+/* SIDEBAR */
+.sidebar{width:220px;background:var(--card);border-right:1px solid var(--border);padding:16px 0;flex-shrink:0;overflow-y:auto}
+.nav-section{padding:0 12px;margin-bottom:20px}
+.nav-section-label{font-size:10px;font-weight:700;color:var(--text2);letter-spacing:.08em;text-transform:uppercase;padding:0 8px;margin-bottom:6px}
+.nav-item{display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13px;color:var(--text2);transition:all .12s;border:none;background:transparent;width:100%;font-family:inherit;text-align:left}
+.nav-item:hover{background:#f1f5f9;color:var(--text)}
+.nav-item.active{background:#eff6ff;color:var(--blue);font-weight:600}
+.nav-icon{font-size:16px;width:20px;text-align:center;flex-shrink:0}
+
+/* CONTENT */
+.content{flex:1;overflow-y:auto;padding:24px}
+.page{display:none}
+.page.active{display:block}
+
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
+.page-title{font-size:20px;font-weight:700;color:var(--text)}
+.page-sub{font-size:13px;color:var(--text2);margin-top:2px}
+
+/* STATS */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:28px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px}
+.stat-label{font-size:12px;color:var(--text2);font-weight:500;margin-bottom:8px}
+.stat-val{font-size:28px;font-weight:700;color:var(--text)}
+.stat-sub{font-size:11px;color:var(--text2);margin-top:4px}
+
+/* TABLE */
+.table-card{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.table-toolbar{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.search-input{flex:1;min-width:200px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;outline:none}
+.search-input:focus{border-color:var(--blue)}
+.btn{padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;border:none;transition:all .12s;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:var(--blue);color:#fff}
+.btn-primary:hover{opacity:.9}
+.btn-danger{background:#fef2f2;color:var(--red);border:1px solid #fecaca}
+.btn-danger:hover{background:#fee2e2}
+.btn-secondary{background:var(--bg);color:var(--text);border:1px solid var(--border)}
+.btn-secondary:hover{background:var(--border)}
+.btn-sm{padding:5px 10px;font-size:12px}
+.filter-select{padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:var(--card)}
+
+table{width:100%;border-collapse:collapse}
+thead tr{background:#f8fafc}
+th{padding:10px 16px;text-align:left;font-size:11px;font-weight:700;color:var(--text2);letter-spacing:.05em;text-transform:uppercase;border-bottom:1px solid var(--border)}
+td{padding:12px 16px;font-size:13px;border-bottom:1px solid var(--border);vertical-align:top}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#f8fafc}
+.td-ja{font-weight:600;color:var(--text)}
+.td-kana{font-size:11px;color:var(--text2);margin-top:2px}
+.td-id{color:var(--text2)}
+.badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:99px}
+.badge-blue{background:#eff6ff;color:var(--blue)}
+.badge-green{background:#f0fdf4;color:var(--green)}
+.badge-orange{background:#fff7ed;color:#c2410c}
+.badge-purple{background:#f5f3ff;color:#7c3aed}
+.badge-red{background:#fef2f2;color:var(--red)}
+.actions{display:flex;gap:6px}
+.pagination{padding:16px 20px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.page-info{font-size:13px;color:var(--text2)}
+.page-btns{display:flex;gap:6px}
+
+/* MODAL */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;padding:20px}
+.modal-bg.show{display:flex}
+.modal{background:var(--card);border-radius:16px;width:100%;max-width:580px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.modal-hdr{padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.modal-title{font-size:16px;font-weight:700}
+.modal-close{background:transparent;border:none;font-size:20px;cursor:pointer;color:var(--text2);line-height:1;padding:4px}
+.modal-body{padding:20px 24px;overflow-y:auto;display:flex;flex-direction:column;gap:14px}
+.modal-footer{padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;flex-shrink:0}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+textarea.form-input{resize:vertical;min-height:80px}
+.form-hint{font-size:11px;color:var(--text2);margin-top:4px}
+
+/* ANNOUNCE */
+.announce-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:12px;display:flex;gap:16px}
+.announce-body{flex:1}
+.announce-title{font-size:15px;font-weight:700;margin-bottom:4px}
+.announce-text{font-size:13px;color:var(--text2);line-height:1.6}
+.announce-meta{font-size:11px;color:var(--text2);margin-top:8px}
+.announce-actions{display:flex;flex-direction:column;gap:6px;flex-shrink:0}
+
+.toast{position:fixed;bottom:24px;right:24px;background:#1e293b;color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:500;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.show{opacity:1}
+.empty-state{padding:48px;text-align:center;color:var(--text2);font-size:14px}
+.loading{padding:32px;text-align:center;color:var(--text2);font-size:13px}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <img src="data:image/png;base64,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" alt="LEGACY">
+    </div>
+    <div class="login-title">Admin Dashboard</div>
+    <div class="login-sub">ハンドブック管理システム</div>
+    <div class="form-group">
+      <label class="form-label">メールアドレス</label>
+      <input type="email" id="email" class="form-input" placeholder="admin@example.com">
+    </div>
+    <div class="form-group">
+      <label class="form-label">パスワード</label>
+      <input type="password" id="password" class="form-input" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="btn-login" onclick="doLogin()" id="login-btn">ログイン</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div id="main-screen">
+  <div class="topbar">
+    <div class="topbar-left">
+      <img src="data:image/png;base64,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" alt="LEGACY" style="filter:brightness(0) invert(1)">
+      <span class="topbar-title">Admin Dashboard</span>
+    </div>
+    <div class="topbar-right">
+      <span class="user-badge" id="user-email"></span>
+      <button class="btn-logout" onclick="doLogout()">ログアウト</button>
+    </div>
+  </div>
+  <div class="layout">
+    <div class="sidebar">
+      <div class="nav-section">
+        <div class="nav-section-label">メニュー</div>
+        <button class="nav-item active" onclick="showPage('dashboard',this)">
+          <span class="nav-icon">📊</span>ダッシュボード
+        </button>
+        <button class="nav-item" onclick="showPage('terms',this)">
+          <span class="nav-icon">📚</span>用語管理
+        </button>
+        <button class="nav-item" onclick="showPage('announce',this)">
+          <span class="nav-icon">📢</span>お知らせ
+        </button>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-label">リンク</div>
+        <button class="nav-item" onclick="window.open('index.html','_blank')">
+          <span class="nav-icon">🌐</span>ハンドブックを開く
+        </button>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- DASHBOARD -->
+      <div class="page active" id="page-dashboard">
+        <div class="page-header">
+          <div>
+            <div class="page-title">ダッシュボード</div>
+            <div class="page-sub">Legacy ハンドブック 管理画面</div>
+          </div>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">総用語数</div>
+            <div class="stat-val" id="stat-terms">-</div>
+            <div class="stat-sub">Supabase DB</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">お知らせ</div>
+            <div class="stat-val" id="stat-announce">-</div>
+            <div class="stat-sub">公開中</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">カテゴリ数</div>
+            <div class="stat-val" id="stat-parts">7</div>
+            <div class="stat-sub">P1〜P7</div>
+          </div>
+        </div>
+        <div class="table-card" style="padding:20px">
+          <div style="font-size:14px;font-weight:600;margin-bottom:12px">クイックアクション</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn btn-primary" onclick="showPage('terms',document.querySelector('.nav-item:nth-child(2))'));openAddTerm()">＋ 用語を追加</button>
+            <button class="btn btn-secondary" onclick="showPage('announce',document.querySelector('.nav-item:nth-child(3)'))">＋ お知らせを追加</button>
+            <button class="btn btn-secondary" onclick="importAllTerms()">📥 現在のデータをDBにインポート</button>
+          </div>
+          <div style="font-size:12px;color:var(--text2);margin-top:10px">※ 初回は「DBにインポート」でHTMLのデータをSupabaseに移行してください</div>
+        </div>
+      </div>
+
+      <!-- TERMS -->
+      <div class="page" id="page-terms">
+        <div class="page-header">
+          <div>
+            <div class="page-title">用語管理</div>
+            <div class="page-sub">用語の追加・編集・削除</div>
+          </div>
+          <button class="btn btn-primary" onclick="openAddTerm()">＋ 用語を追加</button>
+        </div>
+        <div class="table-card">
+          <div class="table-toolbar">
+            <input type="search" class="search-input" placeholder="用語を検索..." oninput="filterTerms(this.value)" id="term-search">
+            <select class="filter-select" onchange="filterByPart(this.value)" id="part-filter">
+              <option value="">すべてのカテゴリ</option>
+              <option value="p1">P1 安全衛生</option>
+              <option value="p2">P2 職場・労働</option>
+              <option value="p3">P3 建設工事</option>
+              <option value="p4">P4 動詞・測定</option>
+              <option value="p5">P5 掲示板</option>
+              <option value="p6">P6 会話集</option>
+              <option value="p7">P7 生活ガイド</option>
+            </select>
+          </div>
+          <div id="terms-table-wrap">
+            <div class="loading">読み込み中...</div>
+          </div>
+          <div class="pagination">
+            <span class="page-info" id="terms-info">-</span>
+            <div class="page-btns">
+              <button class="btn btn-secondary btn-sm" onclick="prevPage()" id="btn-prev">← 前</button>
+              <button class="btn btn-secondary btn-sm" onclick="nextPage()" id="btn-next">次 →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ANNOUNCE -->
+      <div class="page" id="page-announce">
+        <div class="page-header">
+          <div>
+            <div class="page-title">お知らせ管理</div>
+            <div class="page-sub">ハンドブックに表示するお知らせ</div>
+          </div>
+          <button class="btn btn-primary" onclick="openAddAnnounce()">＋ お知らせを追加</button>
+        </div>
+        <div id="announce-list">
+          <div class="loading">読み込み中...</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- TERM MODAL -->
+<div class="modal-bg" id="term-modal">
+  <div class="modal">
+    <div class="modal-hdr">
+      <div class="modal-title" id="term-modal-title">用語を追加</div>
+      <button class="modal-close" onclick="closeModal('term-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="term-id">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">カテゴリ (Part)</label>
+          <select class="form-input" id="term-part">
+            <option value="p1">P1 安全衛生</option>
+            <option value="p2">P2 職場・労働</option>
+            <option value="p3">P3 建設工事</option>
+            <option value="p4">P4 動詞・測定</option>
+            <option value="p5">P5 掲示板</option>
+            <option value="p6">P6 会話集</option>
+            <option value="p7">P7 生活ガイド</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">セクションID</label>
+          <input type="text" class="form-input" id="term-section" placeholder="例: ch1">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">セクション名（日本語）</label>
+          <input type="text" class="form-input" id="term-section-ja" placeholder="例: 基礎用語①">
+        </div>
+        <div class="form-group">
+          <label class="form-label">セクション名（インドネシア語）</label>
+          <input type="text" class="form-input" id="term-section-id" placeholder="例: Kosakata Dasar">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">日本語 *</label>
+          <input type="text" class="form-input" id="term-ja" placeholder="例: 安全帯">
+        </div>
+        <div class="form-group">
+          <label class="form-label">読み方（ふりがな）</label>
+          <input type="text" class="form-input" id="term-kana" placeholder="例: あんぜんたい">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">インドネシア語訳 *</label>
+        <input type="text" class="form-input" id="term-id" placeholder="例: Sabuk pengaman">
+      </div>
+      <div class="form-group">
+        <label class="form-label">解説（日本語）</label>
+        <textarea class="form-input" id="term-detail-ja" placeholder="用語の詳しい説明..."></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">解説（インドネシア語）</label>
+        <textarea class="form-input" id="term-detail-id" placeholder="Penjelasan dalam bahasa Indonesia..."></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">例文（日本語）</label>
+        <input type="text" class="form-input" id="term-ex-ja" placeholder="例: 高所作業では必ず安全帯を使用すること。">
+      </div>
+      <div class="form-group">
+        <label class="form-label">例文（インドネシア語）</label>
+        <input type="text" class="form-input" id="term-ex-id" placeholder="Contoh kalimat dalam bahasa Indonesia...">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('term-modal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveTerm()" id="save-term-btn">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ANNOUNCE MODAL -->
+<div class="modal-bg" id="announce-modal">
+  <div class="modal">
+    <div class="modal-hdr">
+      <div class="modal-title" id="announce-modal-title">お知らせを追加</div>
+      <button class="modal-close" onclick="closeModal('announce-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="announce-id">
+      <div class="form-group">
+        <label class="form-label">タイトル（日本語）*</label>
+        <input type="text" class="form-input" id="announce-title-ja" placeholder="例: 研修スケジュール変更のお知らせ">
+      </div>
+      <div class="form-group">
+        <label class="form-label">タイトル（インドネシア語）</label>
+        <input type="text" class="form-input" id="announce-title-id" placeholder="Contoh: Pemberitahuan perubahan jadwal">
+      </div>
+      <div class="form-group">
+        <label class="form-label">内容（日本語）</label>
+        <textarea class="form-input" id="announce-body-ja" placeholder="お知らせの内容..." style="min-height:100px"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">内容（インドネシア語）</label>
+        <textarea class="form-input" id="announce-body-id" placeholder="Isi pengumuman..." style="min-height:100px"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('announce-modal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveAnnounce()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL = 'https://iuylfjiokbaimtnmhjfy.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml1eWxmamlva2JhaW10bm1oamZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxOTE5MTIsImV4cCI6MjA5MDc2NzkxMn0.beFPI5S4lxmosVD4nNYBLwp-V32kIdbhOwkDw0b46S0';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// State
+let allTerms = [], filteredTerms = [], currentPage = 1;
+const PER_PAGE = 20;
+let searchQ = '', partFilter = '';
+
+// Auth
+async function doLogin() {
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+  const btn = document.getElementById('login-btn');
+  const errEl = document.getElementById('login-error');
+  if(!email || !password) { showError('メールアドレスとパスワードを入力してください'); return; }
+  btn.textContent = 'ログイン中...'; btn.disabled = true;
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  if(error) {
+    showError('ログインに失敗しました: ' + error.message);
+    btn.textContent = 'ログイン'; btn.disabled = false;
+  } else {
+    document.getElementById('user-email').textContent = data.user.email;
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('main-screen').style.display = 'flex';
+    loadDashboard();
+  }
+}
+function showError(msg) {
+  const el = document.getElementById('login-error');
+  el.textContent = msg; el.style.display = 'block';
+}
+async function doLogout() {
+  await sb.auth.signOut();
+  document.getElementById('main-screen').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+}
+
+// Check session on load
+sb.auth.getSession().then(({data}) => {
+  if(data.session) {
+    document.getElementById('user-email').textContent = data.session.user.email;
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('main-screen').style.display = 'flex';
+    loadDashboard();
+  }
+});
+
+// Pages
+function showPage(name, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  if(name === 'terms') loadTerms();
+  if(name === 'announce') loadAnnounce();
+}
+
+// Dashboard
+async function loadDashboard() {
+  const { count: tc } = await sb.from('terms').select('*', {count:'exact',head:true}).eq('is_active', true);
+  const { count: ac } = await sb.from('announcements').select('*', {count:'exact',head:true}).eq('is_active', true);
+  document.getElementById('stat-terms').textContent = tc || 0;
+  document.getElementById('stat-announce').textContent = ac || 0;
+}
+
+// Terms
+async function loadTerms() {
+  document.getElementById('terms-table-wrap').innerHTML = '<div class="loading">読み込み中...</div>';
+  const { data, error } = await sb.from('terms').select('*').order('part_id').order('section_id').order('sort_order');
+  if(error) { document.getElementById('terms-table-wrap').innerHTML = '<div class="empty-state">エラー: ' + error.message + '</div>'; return; }
+  allTerms = data || [];
+  applyFilter();
+}
+
+function applyFilter() {
+  filteredTerms = allTerms.filter(t => {
+    const matchQ = !searchQ || t.ja.toLowerCase().includes(searchQ) || (t.kana||'').toLowerCase().includes(searchQ) || (t.id_trans||'').toLowerCase().includes(searchQ);
+    const matchP = !partFilter || t.part_id === partFilter;
+    return matchQ && matchP;
+  });
+  currentPage = 1;
+  renderTermsTable();
+}
+
+function filterTerms(q) { searchQ = q.toLowerCase(); applyFilter(); }
+function filterByPart(p) { partFilter = p; applyFilter(); }
+
+const PART_LABELS = {p1:'安全衛生',p2:'職場',p3:'建設',p4:'動詞',p5:'掲示板',p6:'会話',p7:'生活'};
+const PART_COLORS = {p1:'badge-green',p2:'badge-orange',p3:'badge-blue',p4:'badge-purple',p5:'badge-blue',p6:'badge-purple',p7:'badge-green'};
+
+function renderTermsTable() {
+  const start = (currentPage-1)*PER_PAGE;
+  const page = filteredTerms.slice(start, start+PER_PAGE);
+  const total = filteredTerms.length;
+  document.getElementById('terms-info').textContent = `${start+1}〜${Math.min(start+PER_PAGE,total)} / ${total}件`;
+  document.getElementById('btn-prev').disabled = currentPage === 1;
+  document.getElementById('btn-next').disabled = start + PER_PAGE >= total;
+  if(page.length === 0) {
+    document.getElementById('terms-table-wrap').innerHTML = '<div class="empty-state">用語が見つかりません</div>';
+    return;
+  }
+  let html = '<table><thead><tr><th>カテゴリ</th><th>日本語 / 読み</th><th>インドネシア語</th><th>セクション</th><th>操作</th></tr></thead><tbody>';
+  page.forEach(t => {
+    html += `<tr>
+      <td><span class="badge ${PART_COLORS[t.part_id]||'badge-blue'}">${PART_LABELS[t.part_id]||t.part_id}</span></td>
+      <td><div class="td-ja">${esc(t.ja)}</div><div class="td-kana">${esc(t.kana||'')}</div></td>
+      <td class="td-id">${esc(t.id_trans||'')}</td>
+      <td style="font-size:12px;color:var(--text2)">${esc(t.section_id)}</td>
+      <td><div class="actions">
+        <button class="btn btn-secondary btn-sm" onclick="editTerm('${t.id}')">編集</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteTerm('${t.id}','${esc(t.ja)}')">削除</button>
+      </div></td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  document.getElementById('terms-table-wrap').innerHTML = html;
+}
+
+function prevPage() { if(currentPage > 1){ currentPage--; renderTermsTable(); }}
+function nextPage() { if((currentPage-1)*PER_PAGE + PER_PAGE < filteredTerms.length){ currentPage++; renderTermsTable(); }}
+
+function openAddTerm() {
+  document.getElementById('term-modal-title').textContent = '用語を追加';
+  document.getElementById('term-id').value = '';
+  ['term-part','term-section','term-section-ja','term-section-id','term-ja','term-kana','term-id','term-detail-ja','term-detail-id','term-ex-ja','term-ex-id'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el.tagName === 'SELECT') el.value = 'p1'; else el.value = '';
+  });
+  document.getElementById('term-modal').classList.add('show');
+}
+
+function editTerm(id) {
+  const t = allTerms.find(x => x.id === id);
+  if(!t) return;
+  document.getElementById('term-modal-title').textContent = '用語を編集';
+  document.getElementById('term-id').value = t.id;
+  document.getElementById('term-part').value = t.part_id || 'p1';
+  document.getElementById('term-section').value = t.section_id || '';
+  document.getElementById('term-section-ja').value = t.section_label_ja || '';
+  document.getElementById('term-section-id').value = t.section_label_id || '';
+  document.getElementById('term-ja').value = t.ja || '';
+  document.getElementById('term-kana').value = t.kana || '';
+  document.getElementById('term-id').value = t.id_trans || '';
+  document.getElementById('term-detail-ja').value = t.detail_ja || '';
+  document.getElementById('term-detail-id').value = t.detail_id || '';
+  document.getElementById('term-ex-ja').value = t.example_ja || '';
+  document.getElementById('term-ex-id').value = t.example_id || '';
+  document.getElementById('term-modal').classList.add('show');
+}
+
+async function saveTerm() {
+  const ja = document.getElementById('term-ja').value.trim();
+  const id_trans = document.getElementById('term-id').value.trim();
+  if(!ja) { toast('日本語を入力してください', true); return; }
+  const btn = document.getElementById('save-term-btn');
+  btn.textContent = '保存中...'; btn.disabled = true;
+  const data = {
+    part_id: document.getElementById('term-part').value,
+    section_id: document.getElementById('term-section').value.trim() || 'misc',
+    section_label_ja: document.getElementById('term-section-ja').value.trim(),
+    section_label_id: document.getElementById('term-section-id').value.trim(),
+    ja, kana: document.getElementById('term-kana').value.trim(),
+    id_trans, detail_ja: document.getElementById('term-detail-ja').value.trim(),
+    detail_id: document.getElementById('term-detail-id').value.trim(),
+    example_ja: document.getElementById('term-ex-ja').value.trim(),
+    example_id: document.getElementById('term-ex-id').value.trim(),
+  };
+  const existingId = document.getElementById('term-id').value;
+  let error;
+  if(existingId) {
+    ({ error } = await sb.from('terms').update(data).eq('id', existingId));
+  } else {
+    ({ error } = await sb.from('terms').insert(data));
+  }
+  btn.textContent = '保存'; btn.disabled = false;
+  if(error) { toast('エラー: ' + error.message, true); return; }
+  toast(existingId ? '用語を更新しました' : '用語を追加しました');
+  closeModal('term-modal');
+  loadTerms();
+  loadDashboard();
+}
+
+async function deleteTerm(id, name) {
+  if(!confirm(`「${name}」を削除しますか？`)) return;
+  const { error } = await sb.from('terms').update({is_active: false}).eq('id', id);
+  if(error) { toast('エラー: ' + error.message, true); return; }
+  toast('削除しました');
+  loadTerms();
+  loadDashboard();
+}
+
+// Announcements
+async function loadAnnounce() {
+  document.getElementById('announce-list').innerHTML = '<div class="loading">読み込み中...</div>';
+  const { data, error } = await sb.from('announcements').select('*').order('created_at', {ascending:false});
+  if(error) { document.getElementById('announce-list').innerHTML = '<div class="empty-state">エラー: ' + error.message + '</div>'; return; }
+  if(!data || data.length === 0) {
+    document.getElementById('announce-list').innerHTML = '<div class="empty-state">お知らせがありません</div>'; return;
+  }
+  let html = '';
+  data.forEach(a => {
+    html += `<div class="announce-card">
+      <div class="announce-body">
+        <div class="announce-title">${esc(a.title_ja)}</div>
+        ${a.title_id ? `<div style="font-size:13px;color:var(--text2)">${esc(a.title_id)}</div>` : ''}
+        ${a.body_ja ? `<div class="announce-text">${esc(a.body_ja)}</div>` : ''}
+        <div class="announce-meta">${new Date(a.created_at).toLocaleDateString('ja-JP')} · ${a.is_active ? '公開中' : '非公開'}</div>
+      </div>
+      <div class="announce-actions">
+        <button class="btn btn-secondary btn-sm" onclick="editAnnounce('${a.id}')">編集</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteAnnounce('${a.id}')">削除</button>
+      </div>
+    </div>`;
+  });
+  document.getElementById('announce-list').innerHTML = html;
+}
+
+function openAddAnnounce() {
+  document.getElementById('announce-modal-title').textContent = 'お知らせを追加';
+  document.getElementById('announce-id').value = '';
+  ['announce-title-ja','announce-title-id','announce-body-ja','announce-body-id'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('announce-modal').classList.add('show');
+}
+
+function editAnnounce(id) {
+  // Load from current list
+  const cards = document.querySelectorAll('.announce-card');
+  document.getElementById('announce-modal-title').textContent = 'お知らせを編集';
+  document.getElementById('announce-id').value = id;
+  document.getElementById('announce-modal').classList.add('show');
+}
+
+async function saveAnnounce() {
+  const title_ja = document.getElementById('announce-title-ja').value.trim();
+  if(!title_ja) { toast('タイトルを入力してください', true); return; }
+  const data = {
+    title_ja, title_id: document.getElementById('announce-title-id').value.trim(),
+    body_ja: document.getElementById('announce-body-ja').value.trim(),
+    body_id: document.getElementById('announce-body-id').value.trim(),
+  };
+  const existingId = document.getElementById('announce-id').value;
+  let error;
+  if(existingId) {
+    ({ error } = await sb.from('announcements').update(data).eq('id', existingId));
+  } else {
+    ({ error } = await sb.from('announcements').insert(data));
+  }
+  if(error) { toast('エラー: ' + error.message, true); return; }
+  toast(existingId ? '更新しました' : '追加しました');
+  closeModal('announce-modal');
+  loadAnnounce();
+  loadDashboard();
+}
+
+async function deleteAnnounce(id) {
+  if(!confirm('このお知らせを削除しますか？')) return;
+  const { error } = await sb.from('announcements').update({is_active:false}).eq('id', id);
+  if(error) { toast('エラー: ' + error.message, true); return; }
+  toast('削除しました');
+  loadAnnounce();
+  loadDashboard();
+}
+
+// Import all terms from inline DB to Supabase
+async function importAllTerms() {
+  if(!confirm('現在のHTMLデータをSupabaseにインポートします。既存のデータは上書きされません。続けますか？')) return;
+  toast('インポート中...');
+  
+  // Get all terms from the main handbook DB
+  // We'll fetch the index.html and extract DB, but since we're in admin.html,
+  // we define the import data inline
+  const parts = window.IMPORT_DB || [];
+  if(parts.length === 0) { toast('インポートデータがありません', true); return; }
+  
+  let count = 0;
+  for(const part of parts) {
+    for(const section of part.sections) {
+      for(let i=0; i<section.items.length; i++) {
+        const item = section.items[i];
+        const row = {
+          part_id: part.id,
+          section_id: section.id,
+          section_label_ja: section.label.ja,
+          section_label_id: section.label.id,
+          type: section.type || 'glossary',
+          ja: item.ja,
+          kana: item.kana || '',
+          id_trans: item.id || '',
+          detail_ja: item.detail ? item.detail.ja : '',
+          detail_id: item.detail ? item.detail.id : '',
+          example_ja: item.example ? item.example.ja : '',
+          example_id: item.example ? item.example.id : '',
+          sort_order: i,
+        };
+        const { error } = await sb.from('terms').insert(row);
+        if(!error) count++;
+      }
+    }
+  }
+  toast(`${count}件をインポートしました`);
+  loadDashboard();
+  if(document.getElementById('page-terms').classList.contains('active')) loadTerms();
+}
+
+// Utils
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function toast(msg, err) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.background = err ? '#dc2626' : '#1e293b';
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+// Close modal on backdrop click
+document.querySelectorAll('.modal-bg').forEach(bg => {
+  bg.addEventListener('click', e => { if(e.target === bg) bg.classList.remove('show'); });
+});
+</script>
+</body>
+</html>
