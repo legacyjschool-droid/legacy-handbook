@@ -169,6 +169,17 @@ html,body{
 .offline-bar.show{display:block}
 .announce-banner{background:#F5C418;padding:10px 16px;font-size:13px;font-weight:500;color:#1a2f6a;cursor:pointer;display:none}
 .announce-banner.show{display:block}
+
+.loading-screen{position:fixed;inset:0;background:#2B4EA8;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;transition:opacity .4s}
+.loading-screen.hide{opacity:0;pointer-events:none}
+.loading-bar{width:200px;height:3px;background:rgba(255,255,255,.2);border-radius:99px;overflow:hidden;margin-top:20px}
+.loading-bar-inner{height:100%;background:#F5C418;border-radius:99px;animation:lb 1.2s ease-in-out infinite}
+@keyframes lb{0%{width:0%}60%{width:80%}100%{width:100%}}
+.loading-text{font-size:12px;color:rgba(255,255,255,.6);margin-top:12px}
+.offline-bar{background:#e65100;color:#fff;font-size:11px;padding:6px 14px;text-align:center;display:none}
+.offline-bar.show{display:block}
+.announce-banner{background:#F5C418;padding:10px 16px;font-size:13px;font-weight:500;color:#1a2f6a;cursor:pointer;display:none}
+.announce-banner.show{display:block}
 </style>
 </head>
 <body>
@@ -212,13 +223,13 @@ html,body{
 </div>
 
 <script>
-const SURL = 'https://iuylfjiokbaimtnmhjfy.supabase.co';
-const SKEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml1eWxmamlva2JhaW10bm1oamZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxOTE5MTIsImV4cCI6MjA5MDc2NzkxMn0.beFPI5S4lxmosVD4nNYBLwp-V32kIdbhOwkDw0b46S0';
-const CACHE_KEY = 'lhb_v2';
-const CACHE_TS = 'lhb_ts_v2';
-const TTL = 1800000;
+const SURL= + SUPABASE_URL + ;
+const SKEY= + SUPABASE_KEY + ;
+const CACHE_KEY='lhb_v2';
+const CACHE_TS='lhb_ts_v2';
+const TTL=1800000;
 
-let allData=[], parts=[], part='all', q='';
+let allData=[],parts=[],part='all',q='';
 window._items=[];window._types=[];
 
 const PMETA={
@@ -246,37 +257,26 @@ function adjustPadding(){
   document.getElementById('main').style.paddingTop=(h+12)+'px';
 }
 
-// Fetch with plain fetch (no supabase-js dependency)
 async function fetchTerms(){
   const url=SURL+'/rest/v1/terms?select=*&is_active=eq.true&order=part_id,section_id,sort_order';
-  const r=await fetch(url,{
-    headers:{
-      'apikey':SKEY,
-      'Authorization':'Bearer '+SKEY,
-      'Content-Type':'application/json'
-    }
-  });
-  if(!r.ok) throw new Error('HTTP '+r.status+': '+await r.text());
+  const r=await fetch(url,{headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json'}});
+  if(!r.ok) throw new Error('HTTP '+r.status);
   return r.json();
 }
 
 async function fetchAnnouncements(){
   const url=SURL+'/rest/v1/announcements?select=*&is_active=eq.true&order=created_at.desc&limit=1';
-  const r=await fetch(url,{
-    headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}
-  });
+  const r=await fetch(url,{headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}});
   if(!r.ok) return [];
   return r.json();
 }
 
 async function loadData(){
-  // Check cache
   const cached=localStorage.getItem(CACHE_KEY);
   const ts=localStorage.getItem(CACHE_TS);
-  if(cached && ts && (Date.now()-parseInt(ts))<TTL){
+  if(cached&&ts&&(Date.now()-parseInt(ts))<TTL){
     allData=JSON.parse(cached);
     build();hideLoading();
-    // Refresh in background
     fetchTerms().then(d=>{localStorage.setItem(CACHE_KEY,JSON.stringify(d));localStorage.setItem(CACHE_TS,Date.now()+'');}).catch(()=>{});
     return;
   }
@@ -333,7 +333,7 @@ function build(){
 }
 
 function buildNav(){
-  let h='<button class="nb on" onclick="setPart(\'all\',this)"><span class="nb-ja">すべて</span><span class="nb-id">Semua</span></button>';
+  let h='<button class="nb on" onclick="setPart('all',this)"><span class="nb-ja">すべて</span><span class="nb-id">Semua</span></button>';
   parts.forEach(p=>{
     const l=NLBL[p.id]||{ja:p.id,id:p.id};
     h+=`<button class="nb" onclick="setPart('${p.id}',this)"><span class="nb-ja">${l.ja}</span><span class="nb-id">${l.id}</span></button>`;
@@ -358,7 +358,7 @@ function doSearch(v){
 
 function hl(t,query){
   if(!query||!t) return t||'';
-  return t.replace(new RegExp('('+query.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi'),'<span class="hl">$1</span>');
+  return t.replace(new RegExp('('+query.replace(/[.*+?^${}()|[\]\]/g,'\$&')+')','gi'),'<span class="hl">$1</span>');
 }
 
 function matches(item,query){
@@ -444,21 +444,16 @@ function render(){
   adjustPadding();
 }
 
-// Offline
 window.addEventListener('offline',()=>document.getElementById('offline-bar').classList.add('show'));
 window.addEventListener('online',()=>document.getElementById('offline-bar').classList.remove('show'));
 if(!navigator.onLine) document.getElementById('offline-bar').classList.add('show');
+window.addEventListener('load',adjustPadding);
+window.addEventListener('resize',adjustPadding);
 
-window.addEventListener('load',()=>{adjustPadding();});
-window.addEventListener('resize',()=>{adjustPadding();});
-
-// Start
 loadData();
 loadAnnouncements();
 
-if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('/sw.js');
-}
+if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js');}
 </script>
 </body>
 </html>
