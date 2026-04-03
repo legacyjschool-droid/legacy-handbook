@@ -193,6 +193,20 @@ html,body{
 .pw-error{color:#dc2626;font-size:12px;margin-top:8px;display:none}
 .pw-hint{color:#94a3b8;font-size:11px;margin-top:16px}
 </style>
+<script>
+function checkPW() {
+  const val = document.getElementById('pw-input').value;
+  if(val === 'Legacy2025') {
+    sessionStorage.setItem('lhb_auth_v1', '1');
+    document.getElementById('pw-screen').style.display = 'none';
+    if(typeof loadData === 'function') { loadData(); loadAnnouncements(); }
+  } else {
+    document.getElementById('pw-error').style.display = 'block';
+    document.getElementById('pw-input').value = '';
+    setTimeout(()=>document.getElementById('pw-input').focus(), 50);
+  }
+}
+</script>
 </head>
 <body>
 
@@ -484,31 +498,15 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js');}
 const PW_HASH = '0f8e2214a3aef9aceed698492d098d176bac2a5b14869bc8f28a94b042f432e4';
 const PW_KEY = 'lhb_auth_v1';
 
-function checkPW() {
-  const val = document.getElementById('pw-input').value;
-  if(val === 'Legacy2025') {
-    sessionStorage.setItem(PW_KEY, '1');
-    document.getElementById('pw-screen').style.display = 'none';
-    loadData();
-    loadAnnouncements();
-  } else {
-    document.getElementById('pw-error').style.display = 'block';
-    document.getElementById('pw-input').value = '';
-    document.getElementById('pw-input').focus();
-  }
-}
+
 
 // Check if already authenticated
-if(sessionStorage.getItem(PW_KEY)) {
-  document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('pw-screen').style.display = 'none';
-    loadData();
-    loadAnnouncements();
-  });
+if(sessionStorage.getItem('lhb_auth_v1')) {
+  document.getElementById('pw-screen').style.display = 'none';
+  loadData();
+  loadAnnouncements();
 } else {
-  document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('pw-input').focus();
-  });
+  document.getElementById('pw-input') && document.getElementById('pw-input').focus();
 }
 
 </script>
