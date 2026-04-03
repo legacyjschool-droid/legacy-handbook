@@ -323,7 +323,7 @@ textarea.form-input{resize:vertical;min-height:80px}
       </div>
       <div class="form-group">
         <label class="form-label">インドネシア語訳 *</label>
-        <input type="text" class="form-input" id="term-id" placeholder="例: Sabuk pengaman">
+        <input type="text" class="form-input" id="term-indonesian" placeholder="例: Sabuk pengaman">
       </div>
       <div class="form-group">
         <label class="form-label">解説（日本語）</label>
@@ -511,7 +511,7 @@ function nextPage() { if((currentPage-1)*PER_PAGE + PER_PAGE < filteredTerms.len
 function openAddTerm() {
   document.getElementById('term-modal-title').textContent = '用語を追加';
   document.getElementById('term-id').value = '';
-  ['term-part','term-section','term-section-ja','term-section-id','term-ja','term-kana','term-id','term-detail-ja','term-detail-id','term-ex-ja','term-ex-id'].forEach(id => {
+  ['term-part','term-section','term-section-ja','term-section-id','term-ja','term-kana','term-indonesian','term-detail-ja','term-detail-id','term-ex-ja','term-ex-id'].forEach(id => {
     const el = document.getElementById(id);
     if(el.tagName === 'SELECT') el.value = 'p1'; else el.value = '';
   });
@@ -529,7 +529,7 @@ function editTerm(id) {
   document.getElementById('term-section-id').value = t.section_label_id || '';
   document.getElementById('term-ja').value = t.ja || '';
   document.getElementById('term-kana').value = t.kana || '';
-  document.getElementById('term-id').value = t.id_trans || '';
+  document.getElementById('term-indonesian').value = t.id_trans || '';
   document.getElementById('term-detail-ja').value = t.detail_ja || '';
   document.getElementById('term-detail-id').value = t.detail_id || '';
   document.getElementById('term-ex-ja').value = t.example_ja || '';
