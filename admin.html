@@ -539,7 +539,7 @@ function editTerm(id) {
 
 async function saveTerm() {
   const ja = document.getElementById('term-ja').value.trim();
-  const id_trans = document.getElementById('term-id').value.trim();
+  const id_trans = document.getElementById('term-indonesian').value.trim();
   if(!ja) { toast('日本語を入力してください', true); return; }
   const btn = document.getElementById('save-term-btn');
   btn.textContent = '保存中...'; btn.disabled = true;
